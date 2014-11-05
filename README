@@ -1,0 +1,49 @@
+Author: Edward (Teddy) Parker, tparker@physics.ucsb.edu
+Advised by: Leon Balents, KITP, Santa Barbara, CA, USA
+Last updated: April 2014
+
+This is a DMRG code for finding the ground state of a one-dimensional chain with open boundary conditions, first- and second-nearest-neighbor couplings, and a uniformly spatially rotating external field, which does not incorporate any symmetries of the Hamiltonian.  The files that should be modified between runs are the following:
+
+[System name].cpp: specifies the types of nearest-neighbor couplings and (if applicable) external magnetic fields.  The specific values of the coupling constants, however, are read in from ./Input/Input at runtime.
+
+GlobalHamiltonianParameters.h: specifies the size of the single-site Hilbert space, the number of distinct coupling constants, the number of independent coupling operators, and whether the single-site observables' matrices have real (e.g. sigma_x or sigma_z) or complex (e.g. sigma_y) elements.  Note that the format of the matrices listed in ObservableOps.h depends on this choice.
+
+GlobalPrecisionParameters.h: specifies the minimum and maximum number of allowed Lanczos iterations, the "fallback" Lanczos convergence to accept if the algorithm has constructed the entire column space and still not converged, the relative difference between consecutive density-matrix eigenvalues to be considered nondegenerate,  and the threshhold at which to round observables to zero.
+
+ObservableOps.h: lists all the single-site observable operators that will used in finding expectation values of observables (e.g. the Pauli matrices).
+
+**********
+
+The rest of the code modules (which should not be modified, unless you know what you're doing) are, in the order in which they are accessed during execution:
+
+main.cpp: Reads in the system parameters from ./Input/Input, runs the infinite-stage and finite-stage DMRG algorithm, calculates the observables, and writes them to ./Output.
+
+TheBlock.cpp: The main body of the DMRG algorithm.  Joins the system and environmental blocks into the superblock, diagonalizes it, forms the reduced density matrix from the superblock ground state, finds highest-weighted eigenstates of the density matrix, projects the expanded system block into the subspace spanned by those eigenstates, and changes the ground eigenstate into the new basis to serve as the seed for the next DMRG step.  Also forms the final superblock Hamiltonain after all sweeps have been completed.
+
+FreeFunctions.cpp: assorted miscellaneous functions that are freely usuable by all classes.  Contains functions to generate a random seed for the Lanczos algorithm during infinite-stage DMRG, to reflect the predicted eigenstate when the sweep reaches the edge of the system, and to calculate one-site expectation values and two-site correlation functions at all specified sites in the system once the final superblock Hamiltonian has been formed.
+
+Lanczos.cpp: Lanczos algorithm for finding the lowest eigenstate of the superblock Hamiltonain, called by TheBlock.cpp during each DMRG step.
+
+FinalSuperblock.cpp: Forms the final superblock Hamiltonian after all the finite-stage DMRG sweeps have been completed, and calculates the expectation value of an arbitrary observable operator.
+
+**********
+
+The numerical model-independent parameters (e.g. the values of the coupling constants and the precision parameters) are read at runtime from the file ./Input/Input, which reads in the following values:
+
+First, read in the parameters that don't change across trials:
+1. (int)  Number of trials
+2. (bool) Calculate observables (1) or only find the ground state energy (0)? (If 0, do not write anything for the next 5 lines)
+3. (bool) Calculate one-site observables? (If 0, skip next line)
+4. (int)  Position of the one-site observable in the list of observables defined in ObservableOps.h
+5. (bool) Calculate two-site observables? (If 0, skip next 2 lines)
+6. (int)  Position of the first two-site observable in the list of observables defined in ObservableOps.h
+7. (int)  Position of the second two-site observable in the list of observables defined in ObservableOps.h
+
+Next, read in the parameters that change across trials (repeat the next block as many times as there are trials):
+8.  (int) System length
+9.  (List of doubles) Values of coupling constants (separate by spaces)
+10. (double) Wave number of magnetic field precession
+11. (int) Number of sites in center of system at which to calculate observables (must be less than or equal to system length and should have the same parity 		  - if not, the bias is leftward). If -1, then calculates all sites. If line #2 is set to 0, this value is not used.
+12. (int) Maximum number of stored states (i.e. bond dimension)
+13. (int) Number of fDRMG sweeps
+14. (list of doubles) Lanczos ground state error tolerance (i.e. maximum allowed norm of the difference between consecutive Lanczos iterations' ground state 	 	  vectors) for each sweep (must be ((number of fDMRG sweeps) + 1) entries)
