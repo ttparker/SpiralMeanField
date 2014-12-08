@@ -3,12 +3,6 @@
 
 #include "main.h"
 
-#define kp kroneckerProduct
-#define Id(size) MatrixXd::Identity(size, size)
-#define Id_d Matrix<double, d, d>::Identity()       // one-site identity matrix
-
-typedef std::vector<MatrixD_t, Eigen::aligned_allocator<MatrixD_t>> vecMatD_t;
-
 class Hamiltonian
 {
     public:
