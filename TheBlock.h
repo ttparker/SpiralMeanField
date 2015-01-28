@@ -60,7 +60,10 @@ class TheBlock
      // changes input seed to ground eigenvector - make sure seed is normalized
                solveHSuper(const matPair& hPrimes, const stepData& data,
                            rmMatrixX_t& psiGround) const;
-        MatrixX_t changeBasis(const MatrixX_t& mat, const TheBlock* block) const;
+        MatrixX_t createPrimeToRhoBasis(const MatrixX_t& rho, int mMax,
+                                        double& cumulativeTruncationError),
+           // create projection matrix to truncated Hilbert space of next block
+                  changeBasis(const MatrixX_t& mat, const TheBlock* block) const;
                    // represents operators in the basis of the new system block
 };
 

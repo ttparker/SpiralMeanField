@@ -186,7 +186,7 @@ int main()
                                                     cumulativeTruncationError);
         };
         std::cout << "iDMRG average truncation error: "
-                  << cumulativeTruncationError / (lSys - lSys / 2 - 1)
+                  << cumulativeTruncationError / (lSys - 2)
                   << std::endl;       // handles both even and odd system sizes
         if(completeED || nSweeps == 0)
             psiGround = randomSeed(westBlocks[lSFinal - 1],
@@ -234,7 +234,7 @@ int main()
                                                      cumulativeTruncationError);
                 std::cout << "Sweep " << sweep
                           << " complete. Average truncation error: "
-                          << cumulativeTruncationError / (2 * lSys - 4)
+                          << cumulativeTruncationError / (4 * lSys - 8)
                           << std::endl;
             };
         };

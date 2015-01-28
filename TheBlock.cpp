@@ -35,47 +35,23 @@ TheBlock TheBlock::nextBlock(const stepData& data, rmMatrixX_t& psiGround,
     solveHSuper(hPrimes, data, psiGround);            // calculate ground state
     int compm = data.compBlock -> m;
     psiGround.resize(md, compm * d);
-    SelfAdjointEigenSolver<MatrixX_t> rhoSolver(psiGround * psiGround.adjoint());
-                                      // find system density matrix eigenstates
-    int evecsToKeep;
-    if(md <= data.mMax)
-        evecsToKeep = md;
-    else
-    {
-        int firstKeptEval = md - data.mMax;
-        for(double currentFirstEval = rhoSolver.eigenvalues()(firstKeptEval);
-            firstKeptEval < md
-            && (currentFirstEval == 0
-                || (currentFirstEval - rhoSolver.eigenvalues()(firstKeptEval - 1))
-                   / std::abs(currentFirstEval) < degenerateDMCutoff);
-            firstKeptEval++);
-              // find the the max number of eigenvectors to keep that do not
-              // terminate inside a degenerate eigenspace of the density matrix
-        evecsToKeep = md - firstKeptEval;
-        if(evecsToKeep == 0)
-        {
-            std::cerr << "More than mMax highest-weighted density-matrix "
-                      << "eigenvectors are degenerate." << std::endl;
-            exit(EXIT_FAILURE);
-        }
-        else if(evecsToKeep != data.mMax)
-            std::cout << "Warning: mMax truncation ends in a degenerate DM "
-                      << "eigenspace, lowering cutoff to " << evecsToKeep
-                      << " states." << std::endl;
-    };
-    cumulativeTruncationError
-        += rhoSolver.eigenvalues().head(md - evecsToKeep).sum();
-    primeToRhoBasis = rhoSolver.eigenvectors().rightCols(evecsToKeep);
-                                     // construct system change-of-basis matrix
+    primeToRhoBasis = createPrimeToRhoBasis(psiGround * psiGround.adjoint(),
+                                            data.mMax,
+                                            cumulativeTruncationError);
+    int nextBlockM = primeToRhoBasis.cols();
+                               // number of states kept in next truncated block
+
+
+
+
     if(data.infiniteStage)
     {
-        rhoSolver.compute(psiGround.adjoint() * psiGround);
-                                 // find environment density matrix eigenstates
         data.compBlock -> primeToRhoBasis
-            = rhoSolver.eigenvectors().rightCols(data.mMax);
+            = createPrimeToRhoBasis(psiGround.adjoint() * psiGround, data.mMax,
+                                    cumulativeTruncationError);
                                 // construct environment change-of-basis matrix
         if(nextCompBlock)           // excludes last odd-system-size iDMRG step
-            *nextCompBlock = TheBlock(data.mMax,
+            *nextCompBlock = TheBlock(data.compBlock -> primeToRhoBasis.cols(),
                                       changeBasis(hPrimes.second,
                                                   data.compBlock),
                                       createNewRhoBasisH2s(data.ham.siteBasisH2,
@@ -96,12 +72,12 @@ TheBlock TheBlock::nextBlock(const stepData& data, rmMatrixX_t& psiGround,
         };
         psiGround = primeToRhoBasis.adjoint() * psiGround; 
                                       // change the expanded system block basis
-        psiGround.resize(evecsToKeep * d, compm);
+        psiGround.resize(nextBlockM * d, compm);
         psiGround *= data.beforeCompBlock -> primeToRhoBasis.transpose();
                                           // change the environment block basis
-        psiGround.resize(evecsToKeep * d * data.beforeCompBlock -> m * d, 1);
+        psiGround.resize(nextBlockM * d * data.beforeCompBlock -> m * d, 1);
     };
-    return TheBlock(evecsToKeep, changeBasis(hPrimes.first, this),
+    return TheBlock(nextBlockM, changeBasis(hPrimes.first, this),
                     createNewRhoBasisH2s(data.ham.siteBasisH2, false, this),
                     l + 1);       // save expanded-block operators in new basis
 };
@@ -170,6 +146,45 @@ double TheBlock::solveHSuper(const matPair& hPrimes, const stepData& data,
                                                      -> off0RhoBasisH2)
                        + kp(Id(m * d), hPrimes.second);           // superblock
     return lanczos(hSuper, psiGround, data.lancTolerance);
+};
+
+MatrixX_t TheBlock::createPrimeToRhoBasis(const MatrixX_t& rho, int mMax,
+                                          double& cumulativeTruncationError)
+{
+    SelfAdjointEigenSolver<MatrixX_t> rhoSolver(rho);
+                                             // find density matrix eigenstates
+    int md = m * d,
+        evecsToKeep;
+    if(md <= mMax)
+        evecsToKeep = md;
+    else
+    {
+        int firstKeptEval = md - mMax;
+        for(; firstKeptEval < md
+              && (rhoSolver.eigenvalues()(firstKeptEval) == 0
+                  ||   (  rhoSolver.eigenvalues()(firstKeptEval)
+                        - rhoSolver.eigenvalues()(firstKeptEval - 1))
+                       / std::abs(rhoSolver.eigenvalues()(firstKeptEval))
+                     < degenerateDMCutoff);
+              firstKeptEval++);
+              // find the the max number of eigenvectors to keep that do not
+              // terminate inside a degenerate eigenspace of the density matrix
+        evecsToKeep = md - firstKeptEval;
+        if(evecsToKeep == 0)
+        {
+            std::cerr << "More than mMax highest-weighted density-matrix "
+                      << "eigenvectors are degenerate." << std::endl;
+            exit(EXIT_FAILURE);
+        }
+        else if(evecsToKeep != mMax)
+            std::cout << "Warning: mMax truncation ends in a degenerate DM "
+                      << "eigenspace, lowering cutoff to " << evecsToKeep
+                      << " states." << std::endl;
+    };
+    cumulativeTruncationError
+        += rhoSolver.eigenvalues().head(md - evecsToKeep).sum();
+    return rhoSolver.eigenvectors().rightCols(evecsToKeep);
+                                     // construct system change-of-basis matrix
 };
 
 MatrixX_t TheBlock::changeBasis(const MatrixX_t& mat, const TheBlock* block)
