@@ -1,6 +1,6 @@
 Author: Edward (Teddy) Parker, tparker@physics.ucsb.edu
 Advised by: Leon Balents, KITP, Santa Barbara, CA, USA
-Last updated: April 2014
+Last updated: January 2015
 
 This is a DMRG code for finding the ground state of a one-dimensional chain with open boundary conditions, first- and second-nearest-neighbor couplings, and a uniformly spatially rotating external field, which does not incorporate any symmetries of the Hamiltonian.  The files that should be modified between runs are the following:
 

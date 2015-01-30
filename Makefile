@@ -20,7 +20,7 @@ Lanczos.o: $(COMMONHS1) Hamiltonian.h TheBlock.h GlobalPrecisionParameters.h
 
 main.o: $(COMMONHS2) FreeFunctions.h GlobalPrecisionParameters.h ObservableOps.h
 
-$(PROG).o: $(COMMONHS1) Hamiltonian.h
+$(PROG).o: $(COMMONHS1) Hamiltonian.h TheBlock.h
 
 TheBlock.o: $(COMMONHS2) GlobalPrecisionParameters.h
 

@@ -92,7 +92,7 @@ int main()
         std::vector<double> couplingConstants(nCouplingConstants);
         for(int i = 0; i < nCouplingConstants; i++)
             filein >> couplingConstants[i];
-        double k;          // wave number of rotation of the interstitial spins
+        double k;              // wave number of rotation of interstitial spins
         int rangeOfObservables, // number of sites at which to measure observables
             nSweeps;                        // number of sweeps to be performed
         filein >> k >> rangeOfObservables >> data.mMax >> nSweeps;
@@ -144,8 +144,7 @@ int main()
         };
         std::vector<TheBlock> westBlocks(lSys - 2 - skips),
                               eastBlocks(lSys - 2 - skips);
-                                    // initialize system - the last block in
-                                    // each vector is only used for odd-size ED
+             // initialize system - the last block is only used for odd-size ED
         TheBlock* eastBlocksStart = eastBlocks.data();
         westBlocks.front() = TheBlock(data.ham, true);
         eastBlocks.front() = TheBlock(data.ham, false);

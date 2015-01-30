@@ -3,16 +3,13 @@
 
 #include "Hamiltonian.h"
 
-typedef std::pair<MatrixX_t, MatrixX_t> matPair;
-typedef std::pair<std::vector<MatrixX_t>, std::vector<MatrixX_t>> vecMatPair;
-
-class FinalSuperblock;
 class TheBlock;
+class FinalSuperblock;
 
 struct stepData
 {
     Hamiltonian ham;                             // model Hamiltonian paramters
-    bool sweepingEast,                 // currently sweeping from east to west?
+    bool sweepingEast,                 // currently sweeping from west to east?
          exactDiag;             // close enough to edge to skip DMRG trucation?
     TheBlock* compBlock;         // complementary block on other side of system
     bool infiniteStage;           // currently performing infinite-system DMRG?
@@ -25,46 +22,48 @@ struct stepData
 class TheBlock
 {
     public:
-        int m;                              // number of states stored in block
-        
-        TheBlock(int m = 0, const MatrixX_t& hS = MatrixX_t(),
-                 const vecMatPair& newRhoBasisH2s = vecMatPair(),
-                 int l = 0);
+        effectiveHams blockParts; // stores effective Hamiltonians for this site
+
+        TheBlock() {};
         TheBlock(const Hamiltonian& ham, bool westSide);
+        TheBlock(const effectiveHams& blockParts);
         TheBlock nextBlock(const stepData& data, rmMatrixX_t& psiGround,
                            double& cumulativeTruncationError,
                            TheBlock* nextCompBlock = NULL);
                                                      // performs each DMRG step
+        rmMatrixX_t projectBlock(const rmMatrixX_t& blockOp),
+                          // projects system block into truncated DM eigenbasis
+                    projectBASCoupling(const rmMatrixX_t& blockOp,
+                                      const rmMatrixX_t& siteOp),
+     // projects term coupling system block to left-hand ("adjacent") free site
+                    projectFreeSite(const MatrixD_t& freeSiteOp);
+                                                     // projects free site term
         FinalSuperblock createHSuperFinal(const stepData& data,
                                           rmMatrixX_t& psiGround, int skips)
                                           const;
-        obsMatrixX_t obsChangeBasis(const obsMatrixX_t& mat) const;
-                       // changes basis during calculation of observables stage
+               // identical to member functions above except for variable types
+        #ifdef differentScalars
+        obsMatrixX_t obsProjectBlock(const obsMatrixX_t& sysOp),
+                     obsProjectBASCoupling(const obsMatrixX_t& blockOp,
+                                          const obsMatrixX_t& siteOp),
+                     obsProjectFreeSite(const obsMatrixD_t& lFreeSite);
+        #endif
     
     private:
-        MatrixX_t hS;                                      // block Hamiltonian
-        MatrixX_t primeToRhoBasis;                    // change-of-basis matrix
-        std::vector<MatrixX_t> off0RhoBasisH2,
-                               off1RhoBasisH2;
-            // density-matrix-basis coupling operators - "off" means the offset
-            // between this block, in which the operator is represented, and
-            // the site on which it acts
-        int l;            // site at the end of the block (i.e. block size - 1)
+        rmMatrixX_t primeToRhoBasis;                  // change-of-basis matrix
         
-        matPair createHprimes(const stepData& data) const;
-        vecMatPair createNewRhoBasisH2s(const vecMatD_t& siteBasisH2,
-                                     bool exactDiag, const TheBlock* block)
-                                     const;
-        double lanczos(const MatrixX_t& mat, rmMatrixX_t& seed,
-                       double lancTolerance) const,
+        double lanczos(const stepData& data, rmMatrixX_t& seed) const;
      // changes input seed to ground eigenvector - make sure seed is normalized
-               solveHSuper(const matPair& hPrimes, const stepData& data,
-                           rmMatrixX_t& psiGround) const;
-        MatrixX_t createPrimeToRhoBasis(const MatrixX_t& rho, int mMax,
-                                        double& cumulativeTruncationError),
+        rmMatrixX_t createPrimeToRhoBasis(const MatrixX_t& rho, int mMax,
+                                          double& cumulativeTruncationError)
+                                          const,
            // create projection matrix to truncated Hilbert space of next block
-                  changeBasis(const MatrixX_t& mat, const TheBlock* block) const;
-                   // represents operators in the basis of the new system block
+                    createNewHS(const Hamiltonian& ham,
+                                int freeSiteDistFromWestEnd);
+                       // project expanded system block down to truncated basis
+        void projectCouplingOperators(effectiveHams& newBlockParts,
+                                      const Hamiltonian& ham);
+                          // project coupling operators down to truncated basis
 };
 
 #endif

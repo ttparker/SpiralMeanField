@@ -6,16 +6,16 @@ using namespace Eigen;
 
 rmMatrixX_t randomSeed(const TheBlock& leftBlock, const TheBlock& rightBlock)
 {
-    return rmMatrixX_t::Random(leftBlock.m * d * rightBlock.m * d, 1)
-           .normalized();
+    return rmMatrixX_t::Random(leftBlock.blockParts.m * d
+                               * rightBlock.blockParts.m * d, 1).normalized();
 };
 
 void reflectPredictedPsi(rmMatrixX_t& psiGround, const TheBlock& bigBlock,
                          const TheBlock& littleBlock)
 {
-    psiGround.resize(bigBlock.m * d, littleBlock.m * d);
+    psiGround.resize(bigBlock.blockParts.m * d, littleBlock.blockParts.m * d);
     psiGround.transposeInPlace();
-    psiGround.resize(bigBlock.m * d * littleBlock.m * d, 1);
+    psiGround.resize(bigBlock.blockParts.m * d * littleBlock.blockParts.m * d, 1);
 };
 
 VectorXd oneSiteExpValues(const obsMatrixD_t& oneSiteOp, int rangeOfObservables,

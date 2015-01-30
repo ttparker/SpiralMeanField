@@ -3,7 +3,6 @@
 
 #ifdef realHamiltonian
     #define re
-    #include <cmath>
 #endif
 #ifdef complexHamiltonian
     #define re std::real
@@ -19,28 +18,33 @@ extern "C"
 
 using namespace Eigen;
 
-double TheBlock::lanczos(const MatrixX_t& mat, rmMatrixX_t& seed,
-                         double lancTolerance) const
+double TheBlock::lanczos(const stepData& data, rmMatrixX_t& seed) const
 {
-    int matSize = mat.rows();
-    if(matSize == 1)
-        return re(mat(0, 0));
-    const int minIters = std::min(matSize, globalMinLancIters),
-              maxIters = std::min(matSize, globalMaxLancIters);
+    int hamDimension = blockParts.m * d * data.compBlock -> blockParts.m * d;
+    const int minIters = std::min(hamDimension, globalMinLancIters),
+              maxIters = std::min(hamDimension, globalMaxLancIters);
     std::vector<double> a,
                         b;
     a.reserve(minIters);
     b.reserve(minIters);
     MatrixX_t basisVecs = seed;
-    VectorX_t x = mat * basisVecs;
+    VectorX_t x = data.ham.act(blockParts, data.compBlock -> blockParts,
+                               basisVecs, data.sweepingEast);
     a.push_back(re(seed.col(0).dot(x)));
     b.push_back(0.);
     VectorX_t oldGS;
     int i = 0;                                             // iteration counter
-    char JOBZ = 'V',                                 // define dstemr arguments
-         RANGE = 'I';
+//    char JOBZ = 'V',                                 // define dstemr arguments
+//         RANGE = 'I';
     int N = 1;
-    std::vector<double> D,
+    
+    
+    
+    std::vector<double> W;
+    
+    
+    
+/*    std::vector<double> D,
                         E;
     D.reserve(minIters);
     E.reserve(minIters);
@@ -62,7 +66,7 @@ double TheBlock::lanczos(const MatrixX_t& mat, rmMatrixX_t& seed,
         optLIWORK;
     std::vector<int> IWORK;
     int LIWORK,
-        INFO;
+        INFO;*/
     double gStateDiff;
           // change in ground state vector across subsequent Lanczos iterations
     do
@@ -75,12 +79,14 @@ double TheBlock::lanczos(const MatrixX_t& mat, rmMatrixX_t& seed,
         b.push_back(x.norm());
         basisVecs.conservativeResize(NoChange, i + 1);
         basisVecs.col(i) = x / b[i];
-        x.noalias() = mat * basisVecs.col(i) - b[i] * basisVecs.col(i - 1);
+        x.noalias() =  data.ham.act(blockParts, data.compBlock -> blockParts,
+                                    basisVecs.col(i), data.sweepingEast)
+                     - b[i] * basisVecs.col(i - 1);
         a.push_back(re(basisVecs.col(i).dot(x)));
         
         // Lanczos stage 2: diagonalize tridiagonal matrix
         N++;
-        D = a;
+/*        D = a;
         E.assign(b.begin() + 1, b.end());
         E.resize(N);
         W.resize(N);
@@ -98,16 +104,36 @@ double TheBlock::lanczos(const MatrixX_t& mat, rmMatrixX_t& seed,
         IWORK.resize(LIWORK);
         dstemr_(&JOBZ, &RANGE, &N, D.data(), E.data(), &VL, &VU, &IL, &IU, &M,
                 W.data(), Z.data(), &LDZ, &NZC, ISUPPZ, &TRYRAC, WORK.data(),
-                &LWORK, IWORK.data(), &LIWORK, &INFO); // calculate ground state
+                &LWORK, IWORK.data(), &LIWORK, &INFO); // calculate ground state*/
+        
+        
+        
+        MatrixX_t triDiag = MatrixX_t::Zero(i + 1, i + 1);
+        triDiag(0, 0) = a[0];
+        for(int j = 1; j <= i; j++)
+        {
+            triDiag(j, j) = a[j];
+            triDiag(j - 1, j) = triDiag(j, j - 1) = b[j];
+        };
+        SelfAdjointEigenSolver<MatrixX_t> solver(triDiag);
+        W = {solver.eigenvalues()(0)};
+        VectorX_t Z = solver.eigenvectors().col(0);
+        
+        
+        
         seed = (basisVecs * Z).normalized();
         gStateDiff = std::abs(1 - std::abs(seed.col(0).dot(oldGS)));
-    } while(N < minIters || (N < maxIters && gStateDiff > lancTolerance));
-    if(N == maxIters && gStateDiff > lancTolerance)
+    } while(N < minIters || (N < maxIters && gStateDiff > data.lancTolerance));
+    if(N == maxIters && gStateDiff > data.lancTolerance)
                           // check if last iteration converges to an eigenstate
     {
-        double gStateError = std::abs(1 - std::abs(seed.col(0)
-                                                   .dot((mat * seed).col(0)
-                                                        .normalized())));
+        double gStateError
+            = std::abs(1 - std::abs(seed.col(0)
+                                    .dot(data.ham.act(blockParts,
+                                                      data.compBlock
+                                                      -> blockParts,
+                                                      seed, data.sweepingEast)
+                                         .normalized())));
         std::cout << "Warning: final Lanczos iteration reached. The inner "
                   << "product of the final approximate ground state and its "
                   << "normalized image differs from 1 by " << gStateError
