@@ -237,7 +237,6 @@ int main()
                           << std::endl;
             };
         };
-        data.compBlock = eastBlocksStart + (lEFinal - 1);
         data.infiniteStage = false;
         FinalSuperblock hSuperFinal
             = westBlocks[lSFinal - 1].createHSuperFinal(data, psiGround, skips);
