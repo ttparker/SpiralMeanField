@@ -30,9 +30,14 @@ double TheBlock::lanczos(const stepData& data, rmMatrixX_t& seed) const
     MatrixX_t basisVecs = seed;
     VectorX_t x = data.ham.act(blockParts, data.compBlock -> blockParts,
                                basisVecs, data.sweepingEast);
-    a.push_back(re(seed.col(0).dot(x)));
+    
+    
+    double oldGSE,
+           GSE = re(seed.col(0).dot(x));
+    a.push_back(GSE);
+
+
     b.push_back(0.);
-    VectorX_t oldGS;
     int i = 0;                                             // iteration counter
 //    char JOBZ = 'V',                                 // define dstemr arguments
 //         RANGE = 'I';
@@ -40,7 +45,7 @@ double TheBlock::lanczos(const stepData& data, rmMatrixX_t& seed) const
     
     
     
-    std::vector<double> W;
+//    std::vector<double> W;
     
     
     
@@ -67,12 +72,12 @@ double TheBlock::lanczos(const stepData& data, rmMatrixX_t& seed) const
     std::vector<int> IWORK;
     int LIWORK,
         INFO;*/
-    double gStateDiff;
-          // change in ground state vector across subsequent Lanczos iterations
+    double gSEDiff;
+          // change in ground state energy across subsequent Lanczos iterations
     do
     {
         i++;
-        oldGS = seed;
+        oldGSE = GSE;
         
         // Lanczos stage 1: Lanczos iteration
         x -= a[i - 1] * basisVecs.col(i - 1);
@@ -116,34 +121,27 @@ double TheBlock::lanczos(const stepData& data, rmMatrixX_t& seed) const
             triDiag(j - 1, j) = triDiag(j, j - 1) = b[j];
         };
         SelfAdjointEigenSolver<MatrixX_t> solver(triDiag);
-        W = {solver.eigenvalues()(0)};
+        GSE = solver.eigenvalues()(0);
         VectorX_t Z = solver.eigenvectors().col(0);
-        
-        
-        
         seed = (basisVecs * Z).normalized();
-        gStateDiff = std::abs(1 - std::abs(seed.col(0).dot(oldGS)));
-    } while(N < minIters || (N < maxIters && gStateDiff > data.lancTolerance));
-    if(N == maxIters && gStateDiff > data.lancTolerance)
+        gSEDiff = std::abs((GSE - oldGSE) / oldGSE);
+    } while(N < minIters || (N < maxIters && gSEDiff > data.lancTolerance));
+    if(N == maxIters && gSEDiff > data.lancTolerance)
                           // check if last iteration converges to an eigenstate
     {
-        double gStateError
-            = std::abs(1 - std::abs(seed.col(0)
-                                    .dot(data.ham.act(blockParts,
-                                                      data.compBlock
-                                                      -> blockParts,
-                                                      seed, data.sweepingEast)
-                                         .normalized())));
-        std::cout << "Warning: final Lanczos iteration reached. The inner "
-                  << "product of the final approximate ground state and its "
-                  << "normalized image differs from 1 by " << gStateError
-                  << std::endl;
-        if(gStateError > fallbackLancTolerance)
+        std::cout << "Warning: final Lanczos iteration reached. The percent "
+                  << "difference between the last two interations' ground state "
+                  << "energies is " << gSEDiff << std::endl;
+        if(gSEDiff > fallbackLancTolerance)
         {
             std::cerr << "Lanczos algorithm failed to converge after "
                       << maxIters << " iterations." << std::endl;
             exit(EXIT_FAILURE);
         };
     };
-    return W.front();
+    
+    std::cout << "Lanczos iterations: " << N << std::endl;
+    
+    
+    return GSE;
 };

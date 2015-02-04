@@ -98,9 +98,9 @@ int main()
         filein >> k >> rangeOfObservables >> data.mMax >> nSweeps;
         if(rangeOfObservables == -1)
             rangeOfObservables = lSys;
-        std::vector<double> groundStateErrorTolerances(nSweeps + 1);
+        std::vector<double> lancTolerances(nSweeps + 1);
         for(int sweep = 0; sweep <= nSweeps; sweep++)
-            filein >> groundStateErrorTolerances[sweep];
+            filein >> lancTolerances[sweep];
         
         fileout << "System length: " << lSys << "\nCoupling constants:";
         for(double couplingConstant : couplingConstants)
@@ -108,8 +108,8 @@ int main()
         fileout << "\nWave number: " << k << "\nMaximum bond dimension: "
                 << data.mMax << "\nNumber of sweeps: " << nSweeps
                 << "\nLanczos tolerances:";
-        for(double groundStateErrorTolerance : groundStateErrorTolerances)
-            fileout << " " << groundStateErrorTolerance;
+        for(double lancTolerance : lancTolerances)
+            fileout << " " << lancTolerance;
         fileout << std::endl << std::endl;
         data.ham.setParams(couplingConstants, lSys, k);
         int skips = 0,
@@ -155,8 +155,7 @@ int main()
         data.exactDiag = true;
         data.compBlock = eastBlocksStart;
         data.infiniteStage = true;
-        data.lancTolerance = groundStateErrorTolerances.front()
-                             * groundStateErrorTolerances.front() / 2;
+        data.lancTolerance = lancTolerance.front();
         rmMatrixX_t psiGround;                    // seed for Lanczos algorithm
         double cumulativeTruncationError = 0.;
         for(int site = 0; site < skips; site++, data.compBlock++) // initial ED
@@ -201,8 +200,7 @@ int main()
                                                     // perform the fDMRG sweeps
             {
                 data.compBlock = eastBlocksStart + (lEFinal - 1);
-                data.lancTolerance = groundStateErrorTolerances[sweep]
-                                     * groundStateErrorTolerances[sweep] / 2;
+                data.lancTolerance = lancTolerances[sweep];
                 data.beforeCompBlock = data.compBlock - 1;
                 cumulativeTruncationError = 0.;
                 for(int site = lSFinal - 1; site < endSweep;
@@ -233,7 +231,7 @@ int main()
                                                      cumulativeTruncationError);
                 std::cout << "Sweep " << sweep
                           << " complete. Average truncation error: "
-                          << cumulativeTruncationError / (4 * lSys - 8)
+                          << cumulativeTruncationError / (2 * lSys - 4)
                           << std::endl;
             };
         };
@@ -283,4 +281,4 @@ int main()
               << " s" << std::endl;
 
     return 0;
-}
+};
