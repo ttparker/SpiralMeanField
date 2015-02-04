@@ -5,6 +5,9 @@
 
 using namespace Eigen;
 
+#define jprime couplingConstants[2]
+#define h couplingConstants[3]
+
 int main()
 {
     clock_t start = clock();
@@ -18,65 +21,7 @@ int main()
     
     // read in parameters that are constant across all trials:
     int nTrials;
-    bool calcObservables;
-    filein >> nTrials >> calcObservables;
-    bool calcOneSiteExpValues;
-    int indexOfOneSiteOp;
-    obsMatrixD_t oneSiteOp;
-    bool calcTwoSiteExpValues;
-    int indexOfFirstTwoSiteOp,
-        indexOfSecondTwoSiteOp;
-    obsMatrixD_t firstTwoSiteOp,
-                 secondTwoSiteOp;
-    #include "ObservableOps.h"
-    if(calcObservables)
-    {
-        filein >> calcOneSiteExpValues;
-        if(calcOneSiteExpValues)
-        {
-            filein >> indexOfOneSiteOp;
-            oneSiteOp = obsList[indexOfOneSiteOp];
-        };
-        filein >> calcTwoSiteExpValues;
-        if(calcTwoSiteExpValues)
-        {
-            filein >> indexOfFirstTwoSiteOp >> indexOfSecondTwoSiteOp;
-            firstTwoSiteOp = obsList[indexOfFirstTwoSiteOp];
-            secondTwoSiteOp = obsList[indexOfSecondTwoSiteOp];
-        };
-    };
-    
-    std::ofstream infoout("Output/Info");
-    if(infoout)
-    {
-        infoout << "Number of trials: " << nTrials
-                << "\nCalculate observables? "
-                << (calcObservables ? "Yes" : "No") << std::endl;
-        if(calcObservables)
-        {
-            infoout << "Calculate one-site observables? ";
-            if(calcOneSiteExpValues)
-                infoout << "Yes\nIndex of one-site observable: "
-                        << indexOfOneSiteOp << std::endl;
-            else
-                infoout << "No" << std::endl;
-            infoout << "Calculate two-site observables? ";
-            if(calcTwoSiteExpValues)
-                infoout << "Yes\nIndices of two-site observables: "
-                        << indexOfFirstTwoSiteOp << " "
-                        << indexOfSecondTwoSiteOp << std::endl;
-            else
-                infoout << "No" << std::endl;
-            infoout << "Observables threshold: " << observableThreshold
-                    << std::endl;
-        };
-    }
-    else
-    {
-        std::cerr << "Couldn't open output files." << std::endl;
-        exit(EXIT_FAILURE);
-    };
-    infoout.close();
+    filein >> nTrials;
     stepData data; // this struct will contain most of the important parameters
     data.compBlock = data.beforeCompBlock = NULL;
     for(int trial = 1; trial <= nTrials; trial++)
@@ -87,15 +32,16 @@ int main()
         fileout << "Trial " << trial << ":\n" << std::endl;
         
         // read in parameters that vary over trials:
-        int lSys;                           // system length
+        int lSys;                                              // system length
         filein >> lSys;
         std::vector<double> couplingConstants(nCouplingConstants);
         for(int i = 0; i < nCouplingConstants; i++)
             filein >> couplingConstants[i];
-        double k;              // wave number of rotation of interstitial spins
+        double theta,               // polar angle of interstitial spins ansatz
+               dphi; // wave number of azimuthal rotation of interstitial spins
         int rangeOfObservables, // number of sites at which to measure observables
             nSweeps;                        // number of sweeps to be performed
-        filein >> k >> rangeOfObservables >> data.mMax >> nSweeps;
+        filein >> theta >> dphi >> rangeOfObservables >> data.mMax >> nSweeps;
         if(rangeOfObservables == -1)
             rangeOfObservables = lSys;
         std::vector<double> lancTolerances(nSweeps + 1);
@@ -105,13 +51,13 @@ int main()
         fileout << "System length: " << lSys << "\nCoupling constants:";
         for(double couplingConstant : couplingConstants)
             fileout << " " << couplingConstant;
-        fileout << "\nWave number: " << k << "\nMaximum bond dimension: "
-                << data.mMax << "\nNumber of sweeps: " << nSweeps
-                << "\nLanczos tolerances:";
+        fileout << "\nTheta: " << theta << "\ndphi: " << dphi
+                << "\nMaximum bond dimension: " << data.mMax
+                << "\nNumber of sweeps: " << nSweeps << "\nLanczos tolerances:";
         for(double lancTolerance : lancTolerances)
             fileout << " " << lancTolerance;
         fileout << std::endl << std::endl;
-        data.ham.setParams(couplingConstants, lSys, k);
+        data.ham.setParams(couplingConstants, lSys);
         int skips = 0,
             runningKeptStates = d * d;
         for(; runningKeptStates <= data.mMax; skips++)
@@ -146,6 +92,16 @@ int main()
                               eastBlocks(lSys - 2 - skips);
              // initialize system - the last block is only used for odd-size ED
         TheBlock* eastBlocksStart = eastBlocks.data();
+        MatrixXd intSpins(lSys, 3);
+                         // initial ansatz for interstitial spin magnetizations
+        for(int i = 0; i < lSys; i++)
+        {
+            double phi = dphi * (i + .5);
+            intSpins(i, 0) = sin(theta) * cos(phi);
+            intSpins(i, 1) = sin(theta) * sin(phi);
+            intSpins(i, 2) = cos(theta);
+        };
+        data.ham.calcEffectiveH(intSpins);
         westBlocks.front() = TheBlock(data.ham, true);
         eastBlocks.front() = TheBlock(data.ham, false);
                                          // initialize the edge one-site blocks
@@ -155,7 +111,7 @@ int main()
         data.exactDiag = true;
         data.compBlock = eastBlocksStart;
         data.infiniteStage = true;
-        data.lancTolerance = lancTolerance.front();
+        data.lancTolerance = lancTolerances.front();
         rmMatrixX_t psiGround;                    // seed for Lanczos algorithm
         double cumulativeTruncationError = 0.;
         for(int site = 0; site < skips; site++, data.compBlock++) // initial ED
@@ -199,6 +155,9 @@ int main()
             for(int sweep = 1; sweep <= nSweeps; sweep++)
                                                     // perform the fDMRG sweeps
             {
+                fileout << "Sweep " << sweep
+                        << ":\nInterstitial spin polarizations:" << std::endl
+                        << intSpins << std::endl << std::endl;
                 data.compBlock = eastBlocksStart + (lEFinal - 1);
                 data.lancTolerance = lancTolerances[sweep];
                 data.beforeCompBlock = data.compBlock - 1;
@@ -233,41 +192,46 @@ int main()
                           << " complete. Average truncation error: "
                           << cumulativeTruncationError / (2 * lSys - 4)
                           << std::endl;
-            };
-        };
-        data.infiniteStage = false;
-        FinalSuperblock hSuperFinal
-            = westBlocks[lSFinal - 1].createHSuperFinal(data, psiGround, skips);
+                data.infiniteStage = false;
+                FinalSuperblock hSuperFinal
+                    = westBlocks[lSFinal - 1].createHSuperFinal(data, psiGround,
+                                                                skips);
                                                // calculate ground-state energy
-        fileout << "Ground state energy density = "
-                << hSuperFinal.gsEnergy / lSys << std::endl << std::endl;
-        if(calcObservables)
-        {
-            std::cout << "Calculating observables..." << std::endl;
-            VectorXd oneSiteVals;
-            MatrixXd twoSiteVals;
-            if(calcOneSiteExpValues)   // calculate one-site expectation values
-                oneSiteVals = oneSiteExpValues(oneSiteOp, rangeOfObservables,
-                                               lSys, hSuperFinal, westBlocks,
-                                               eastBlocks, fileout);
-            if(calcTwoSiteExpValues)   // calculate two-site expectation values
-                twoSiteVals = twoSiteExpValues(firstTwoSiteOp, secondTwoSiteOp,
-                                               rangeOfObservables, lSys,
-                                               hSuperFinal, westBlocks,
-                                               eastBlocks, fileout);
-            if(calcOneSiteExpValues && calcTwoSiteExpValues)
-            {
-                MatrixXd connectedCorrFunc
-                    = twoSiteVals - oneSiteVals * oneSiteVals.transpose();
-                for(int i = 0, end = rangeOfObservables * rangeOfObservables;
-                    i < end; i++)
-                    if(std::abs(connectedCorrFunc(i)) < observableThreshold)
-                        connectedCorrFunc(i) = 0.;
-                fileout << "Connected correlation function:\n"
-                        << connectedCorrFunc << std::endl << std::endl;
+                fileout << "Ground state energy density = "
+                        << hSuperFinal.gsEnergy / lSys << std::endl << std::endl;
+                std::cout << "Calculating observables..." << std::endl;
+                #include "ObservableOps.h"
+                VectorXd
+                    oneSitexs = oneSiteExpValues(obsList[0], rangeOfObservables,
+                                                 lSys, hSuperFinal, westBlocks,
+                                                 eastBlocks, fileout),
+                    oneSiteys = oneSiteExpValues(obsList[1], rangeOfObservables,
+                                                 lSys, hSuperFinal, westBlocks,
+                                                 eastBlocks, fileout),
+                    oneSitezs = oneSiteExpValues(obsList[2], rangeOfObservables,
+                                                 lSys, hSuperFinal, westBlocks,
+                                                 eastBlocks, fileout);
+                std::cout << std::endl;
+                MatrixXd oneSiteVals(lSys, 3);
+                oneSiteVals.col(0) = oneSitexs;
+                oneSiteVals.col(1) = oneSiteys;
+                oneSiteVals.col(2) = oneSitezs;
+                fileout << "Expectation values at each chain site:" << std::endl
+                        << oneSiteVals << std::endl << std::endl;
+                for(int i = 0; i < lSys - 1; i++)
+                {
+                    RowVector3d hTotal;
+                    hTotal << -jprime * (oneSitexs(i) + oneSitexs(i + 1)),
+                              -jprime * (oneSiteys(i) + oneSiteys(i + 1)),
+                              -jprime * (oneSitezs(i) + oneSitezs(i + 1)) + h;
+                           // induced + applied fields on ith interstitial spin
+                    intSpins.row(i) = hTotal.normalized();
+                };
+                data.ham.calcEffectiveH(intSpins);
             };
+            fileout << "Final interstitial spin polarizations:" << std::endl
+                    << intSpins << std::endl << std::endl;
         };
-        std::cout << std::endl;
         clock_t stopTrial = clock();
         fileout << "Elapsed time: "
                 << float(stopTrial - startTrial)/CLOCKS_PER_SEC << " s"
@@ -279,6 +243,6 @@ int main()
     clock_t stop = clock();
     std::cout << "Done. Elapsed time: " << float(stop - start)/CLOCKS_PER_SEC
               << " s" << std::endl;
-
+    
     return 0;
 };

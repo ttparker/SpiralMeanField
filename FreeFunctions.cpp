@@ -35,8 +35,8 @@ VectorXd oneSiteExpValues(const obsMatrixD_t& oneSiteOp, int rangeOfObservables,
         oneSiteVals(i) = std::abs(exactValue) < observableThreshold ?
                          0. : exactValue;
     };
-    fileout << "Expectation value of one-site observable at each site:\n"
-            << oneSiteVals << std::endl << std::endl;
+//    fileout << "Expectation value of one-site observable at each site:\n"
+//            << oneSiteVals << std::endl << std::endl;
     return oneSiteVals;
 };
 

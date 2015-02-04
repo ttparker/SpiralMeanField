@@ -2,7 +2,8 @@
 
 #define j1 couplingConstants[0]
 #define j2 couplingConstants[1]
-#define jprime couplingConstantsIn[2]
+#define jprime couplingConstants[2]
+#define hIn couplingConstantsIn[3]
 #define sigmaplus siteBasisH2[0]
 #define sigmaz siteBasisH2[1]
 #define sigmaminus siteBasisH2[2]
@@ -31,24 +32,26 @@ Hamiltonian::Hamiltonian()
               0., -1.;
     sigmax << 0., 1.,
               1., 0.;
+    sigmay <<                          0., std::complex<double>(0., -1.),
+              std::complex<double>(0., 1),                            0.;
 };
 
 void Hamiltonian::setParams(const std::vector<double>& couplingConstantsIn,
-                            int lSysIn, double k)
+                            int lSysIn)
 {
     couplingConstants.assign(couplingConstantsIn.begin(),
                              couplingConstantsIn.end() - 1);
     lSys = lSysIn;
-    h = -2 * std::abs(jprime) * cos(k / 2);
-    cosList.clear();
-    sinList.clear();
-    cosList.reserve(lSysIn);
-    sinList.reserve(lSysIn);
-    for(int i = 0; i < lSysIn; i++)
-    {
-        cosList.push_back(cos(k * i));
-        sinList.push_back(sin(k * i));
-    };
+    h = hIn;
+};
+
+void Hamiltonian::calcEffectiveH(const MatrixXd& intSpins)
+{
+    hFromIntSpins = MatrixXd(lSys, 3);
+    hFromIntSpins.row(0) = -jprime * intSpins.row(0);
+                       // interstitial spins have hard-wall boundary conditions
+    hFromIntSpins.bottomRows(lSys - 1)
+        = -jprime * (intSpins.bottomRows(lSys - 1) + intSpins.topRows(lSys - 1));
 };
 
 rmMatrixX_t
@@ -62,8 +65,9 @@ rmMatrixX_t
 
 MatrixD_t Hamiltonian::h1(int sitesFromWestEnd) const
 {
-    return -h * (  cosList[sitesFromWestEnd] * sigmax
-                 + sinList[sitesFromWestEnd] * sigmaz);
+    return -(   hFromIntSpins(sitesFromWestEnd, 0)      * sigmax
+             +  hFromIntSpins(sitesFromWestEnd, 1)      * sigmay
+             + (hFromIntSpins(sitesFromWestEnd, 2) + h) * sigmaz);
 };
 
 Matrix<hamScalar, Dynamic, 1>
