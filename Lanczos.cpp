@@ -139,9 +139,5 @@ double TheBlock::lanczos(const stepData& data, rmMatrixX_t& seed) const
             exit(EXIT_FAILURE);
         };
     };
-    
-    std::cout << "Lanczos iterations: " << N << std::endl;
-    
-    
     return GSE;
 };
