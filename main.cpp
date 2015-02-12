@@ -152,6 +152,7 @@ int main()
             int endSweep = lSys - 4 - skips;              // last site of sweep
             psiGround = randomSeed(westBlocks[lSFinal - 1],
                                    eastBlocks[lEFinal - 1]);
+            double chainEnergy;
             for(int sweep = 1; sweep <= nSweeps; sweep++)
                                                     // perform the fDMRG sweeps
             {
@@ -197,8 +198,9 @@ int main()
                     = westBlocks[lSFinal - 1].createHSuperFinal(data, psiGround,
                                                                 skips);
                                                // calculate ground-state energy
+                chainEnergy = hSuperFinal.gsEnergy;
                 fileout << "Ground state energy density = "
-                        << hSuperFinal.gsEnergy / lSys << std::endl << std::endl;
+                        << chainEnergy / lSys << std::endl << std::endl;
                 std::cout << "Calculating observables..." << std::endl;
                 #include "ObservableOps.h"
                 VectorXd
@@ -221,16 +223,23 @@ int main()
                 for(int i = 0; i < lSys - 1; i++)
                 {
                     RowVector3d hTotal;
-                    hTotal << -jprime * (oneSitexs(i) + oneSitexs(i + 1)),
-                              -jprime * (oneSiteys(i) + oneSiteys(i + 1)),
-                              -jprime * (oneSitezs(i) + oneSitezs(i + 1)) + h;
+                    hTotal <<  -jprime * (oneSitexs(i) + oneSitexs(i + 1)),
+                               -jprime * (oneSiteys(i) + oneSiteys(i + 1)),
+                               -jprime * (oneSitezs(i) + oneSitezs(i + 1))
+                             + h / 2;
                            // induced + applied fields on ith interstitial spin
                     intSpins.row(i) = hTotal.normalized();
                 };
                 data.ham.calcEffectiveH(intSpins);
             };
+            double intEnergy = -h / 2 * intSpins.col(2).sum();
             fileout << "Final interstitial spin polarizations:" << std::endl
-                    << intSpins << std::endl << std::endl;
+                    << intSpins << std::endl << std::endl
+                    << "Contribution to GS energy densy from field on "
+                    << "interstitial spins: " << intEnergy / lSys << std::endl 
+                    << "Total GS energy density: "
+                    << (chainEnergy + intEnergy) / lSys << std::endl
+                    << std::endl;
         };
         clock_t stopTrial = clock();
         fileout << "Elapsed time: "
