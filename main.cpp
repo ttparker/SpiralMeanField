@@ -206,13 +206,13 @@ int main()
                 VectorXd
                     oneSitexs = oneSiteExpValues(obsList[0], rangeOfObservables,
                                                  lSys, hSuperFinal, westBlocks,
-                                                 eastBlocks, fileout),
+                                                 eastBlocks),
                     oneSiteys = oneSiteExpValues(obsList[1], rangeOfObservables,
                                                  lSys, hSuperFinal, westBlocks,
-                                                 eastBlocks, fileout),
+                                                 eastBlocks),
                     oneSitezs = oneSiteExpValues(obsList[2], rangeOfObservables,
                                                  lSys, hSuperFinal, westBlocks,
-                                                 eastBlocks, fileout);
+                                                 eastBlocks);
                 std::cout << std::endl;
                 MatrixXd oneSiteVals(lSys, 3);
                 oneSiteVals.col(0) = oneSitexs;

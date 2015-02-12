@@ -21,8 +21,7 @@ void reflectPredictedPsi(rmMatrixX_t& psiGround, const TheBlock& bigBlock,
 VectorXd oneSiteExpValues(const obsMatrixD_t& oneSiteOp, int rangeOfObservables,
                           int lSys, FinalSuperblock& hSuperFinal,
                           std::vector<TheBlock>& leftBlocks,
-                          std::vector<TheBlock>& rightBlocks,
-                          std::ofstream& fileout)
+                          std::vector<TheBlock>& rightBlocks)
 {
     opsVec ops;                     // list of observable single-site operators
     ops.push_back(std::make_pair(oneSiteOp, 0));
@@ -35,8 +34,6 @@ VectorXd oneSiteExpValues(const obsMatrixD_t& oneSiteOp, int rangeOfObservables,
         oneSiteVals(i) = std::abs(exactValue) < observableThreshold ?
                          0. : exactValue;
     };
-//    fileout << "Expectation value of one-site observable at each site:\n"
-//            << oneSiteVals << std::endl << std::endl;
     return oneSiteVals;
 };
 
