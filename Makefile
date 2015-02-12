@@ -1,6 +1,6 @@
 PROG = SpiralMeanField
 CXX = g++
-CXXFLAGS = -Wall -Wextra -O3 -std=c++11 -march=native -I ~/Eigen_3.2.2 $(DEBUG)
+CXXFLAGS = -Wall -Wextra -O3 -std=c++11 -march=native -I ~/Eigen_3.2.4 $(DEBUG)
 LIBS = -llapack
 OBJS = FinalSuperblock.o FreeFunctions.o Lanczos.o main.o $(PROG).o TheBlock.o
 COMMONHS1 = GlobalHamiltonianParameters.h main.h
