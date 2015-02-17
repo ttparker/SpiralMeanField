@@ -235,7 +235,7 @@ int main()
             double intEnergy = -h / 2 * intSpins.col(2).sum();
             fileout << "Final interstitial spin polarizations:" << std::endl
                     << intSpins << std::endl << std::endl
-                    << "Contribution to GS energy densy from field on "
+                    << "Contribution to GS energy density from field on "
                     << "interstitial spins: " << intEnergy / lSys << std::endl 
                     << "Total GS energy density: "
                     << (chainEnergy + intEnergy) / lSys << std::endl
