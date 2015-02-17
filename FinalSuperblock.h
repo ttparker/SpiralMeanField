@@ -38,8 +38,9 @@ class FinalSuperblock
                      rFreeSite;
 
         void placeOp(const std::pair<obsMatrixD_t, int>& op, opsMap& blockSide,
-                     bool systemSide);
+                     bool systemSide),
                     // assign each one-site observable to the appropriate block
+             reshapePsiGround();                   // back into a column vector
         obsVectorX_t actSysBlock(std::vector<TheBlock>& leftBlocks),
                                     // act the system block on the ground state
                      actLFreeSite(),

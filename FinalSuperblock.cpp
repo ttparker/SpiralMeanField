@@ -60,48 +60,74 @@ double FinalSuperblock::expValue(const opsVec& ops,
             placeOp(opToEvaluate, envBlockOps, false);
         };
     };
-    psiGround.resize(mS * d * mE * d, 1);
+    reshapePsiGround();
+    obsVectorX_t psiPrime;
+        // output of observables in one half of system's action on ground state
     switch(8 * opInSysBlock + 4 * opAtlFreeSite + 2 * opInEnvBlock
            + opAtrFreeSite)                              // evaluate observable
     {
         case 0:                                                 // no operators
             return 1.;
         case 1:                                   // op at right-hand free site
-            return obsRe(psiGround.col(0).eval().dot(actRFreeSite()));
+            psiPrime = actRFreeSite();
+            reshapePsiGround();
+            return obsRe(psiGround.col(0).dot(psiPrime));
         case 2:                                     // ops in environment block
-            return obsRe(psiGround.col(0).eval().dot(actEnvBlock(eastBlocks)));
+            psiPrime = actEnvBlock(eastBlocks);
+            reshapePsiGround();
+            return obsRe(psiGround.col(0).dot(psiPrime));
         case 3:            // ops in environment block and right-hand free site
-            return obsRe(psiGround.col(0).eval()
-                         .dot(actEnvBlockRFreeSite(eastBlocks)));
+            psiPrime = actEnvBlockRFreeSite(eastBlocks);
+            reshapePsiGround();
+            return obsRe(psiGround.col(0).dot(psiPrime));
         case 4:                                         // op at left free site
-            return obsRe(psiGround.col(0).eval().dot(actLFreeSite()));
+            psiPrime = actLFreeSite();
+            reshapePsiGround();
+            return obsRe(psiGround.col(0).dot(psiPrime));
         case 5:                                       // ops at both free sites
-            return obsRe(actLFreeSite().dot(actRFreeSite()));
+            psiPrime = actRFreeSite();
+            reshapePsiGround();
+            return obsRe(actLFreeSite().dot(psiPrime));
         case 6:          // ops in environment block and at left-hand free site
-            return obsRe(actEnvBlock(eastBlocks).dot(actLFreeSite()));
+            psiPrime = actLFreeSite();
+            reshapePsiGround();
+            return obsRe(actEnvBlock(eastBlocks).dot(psiPrime));
         case 7:                 // ops at both free sites and environment block
-            return obsRe(actLFreeSite().dot(actEnvBlockRFreeSite(eastBlocks)));
+            psiPrime = actEnvBlockRFreeSite(eastBlocks);
+            reshapePsiGround();
+            return obsRe(actLFreeSite().dot(psiPrime));
         case 8:                                          // ops in system block
-            return obsRe(psiGround.col(0).eval().dot(actSysBlock(westBlocks)));
+            psiPrime = actSysBlock(westBlocks);
+            reshapePsiGround();
+            return obsRe(psiGround.col(0).dot(psiPrime));
         case 9:              // ops in system block and at right-hand free site
-            return obsRe(actRFreeSite().dot(actSysBlock(westBlocks)));
+            psiPrime = actSysBlock(westBlocks);
+            reshapePsiGround();
+            return obsRe(actRFreeSite().dot(psiPrime));
         case 10:                        // ops in system and environment blocks
-            return obsRe(actSysBlock(westBlocks).dot(actEnvBlock(eastBlocks)));
+            psiPrime = actEnvBlock(eastBlocks);
+            reshapePsiGround();
+            return obsRe(actSysBlock(westBlocks).dot(psiPrime));
         case 11: // ops in system and environment blocks and right-hand free site
-            return obsRe(actSysBlock(westBlocks)
-                         .dot(actEnvBlockRFreeSite(eastBlocks)));
+            psiPrime = actEnvBlockRFreeSite(eastBlocks);
+            reshapePsiGround();
+            return obsRe(actSysBlock(westBlocks).dot(psiPrime));
         case 12:                 // ops in system block and left-hand free site
-            return obsRe(psiGround.col(0).eval()
-                         .dot(actSysBlockLFreeSite(westBlocks)));
+            psiPrime = actSysBlockLFreeSite(westBlocks);
+            reshapePsiGround();
+            return obsRe(psiGround.col(0).dot(psiPrime));
         case 13:                     // ops in system block and both free sites
-            return obsRe(actSysBlockLFreeSite(westBlocks)
-                         .dot(actRFreeSite()));
+            psiPrime = actRFreeSite();
+            reshapePsiGround();
+            return obsRe(actSysBlockLFreeSite(westBlocks).dot(psiPrime));
         case 14: // ops in system and environment blocks and left-hand free site
-            return obsRe(actSysBlockLFreeSite(westBlocks)
-                         .dot(actEnvBlock(eastBlocks)));
+            psiPrime = actEnvBlock(eastBlocks);
+            reshapePsiGround();
+            return obsRe(actSysBlockLFreeSite(westBlocks).dot(psiPrime));
         case 15:    // ops in system and environment blocks and both free sites
-            return obsRe(actSysBlockLFreeSite(westBlocks)
-                         .dot(actEnvBlockRFreeSite(eastBlocks)));
+            psiPrime = actEnvBlockRFreeSite(eastBlocks);
+            reshapePsiGround();
+            return obsRe(actSysBlockLFreeSite(westBlocks).dot(psiPrime));
         default:
             return 0.;
         // can't actually reach this case - just here to quiet compiler warning
@@ -116,6 +142,11 @@ void FinalSuperblock::placeOp(const std::pair<obsMatrixD_t, int>& op,
         blockSide[lhSite] *= op.first;
     else
         blockSide.insert(std::pair<int, obsMatrixD_t>(lhSite, op.first));
+};
+
+void FinalSuperblock::reshapePsiGround()
+{
+    psiGround.resize(mS * d * mE * d, 1);
 };
 
 obsVectorX_t FinalSuperblock::actSysBlock(std::vector<TheBlock>& westBlocks)
