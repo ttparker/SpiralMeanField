@@ -97,9 +97,9 @@ int main()
         for(int i = 0; i < lSys; i++)
         {
             double phi = dphi * (i + .5);
-            intSpins(i, 0) = sin(theta) * cos(phi);
-            intSpins(i, 1) = sin(theta) * sin(phi);
-            intSpins(i, 2) = cos(theta);
+            intSpins(i, 0) = .5 * sin(theta) * cos(phi);
+            intSpins(i, 1) = .5 * sin(theta) * sin(phi);
+            intSpins(i, 2) = .5 * cos(theta);
         };
         data.ham.calcEffectiveH(intSpins);
         westBlocks.front() = TheBlock(data.ham, true);
@@ -228,7 +228,7 @@ int main()
                                -jprime * (oneSitezs(i) + oneSitezs(i + 1))
                              + h / 2;
                            // induced + applied fields on ith interstitial spin
-                    intSpins.row(i) = hTotal.normalized();
+                    intSpins.row(i) = hTotal.normalized() / 2;
                 };
                 data.ham.calcEffectiveH(intSpins);
             };

@@ -35,8 +35,8 @@ class Hamiltonian
         double h;              // strength of externally applied magnetic field
         Eigen::MatrixXd hFromIntSpins; // effective field on chain spins induced
                                       // by neighboring interstitial spins
-        MatrixD_t sigmax,                             // for the external field
-                  sigmay;
+        MatrixD_t sx,                                 // for the external field
+                  sy;
         
         rmMatrixX_t EDBASCoupling(int j,
                                   const std::vector<MatrixX_t>& rhoBasisH2) const;

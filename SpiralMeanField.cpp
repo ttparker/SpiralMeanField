@@ -4,15 +4,15 @@
 #define j2 couplingConstants[1]
 #define jprime couplingConstants[2]
 #define hIn couplingConstantsIn[3]
-#define sigmaplus siteBasisH2[0]
-#define sigmaz siteBasisH2[1]
-#define sigmaminus siteBasisH2[2]
-#define rhoBasisSigmaplus rhoBasisH2[0]
-#define rhoBasisSigmaz rhoBasisH2[1]
-#define off0RhoBasisSigmaplus off0RhoBasisH2[0]
-#define off0RhoBasisSigmaz off0RhoBasisH2[1]
-#define off1RhoBasisSigmaplus off1RhoBasisH2[0]
-#define off1RhoBasisSigmaz off1RhoBasisH2[1]
+#define splus siteBasisH2[0]
+#define sz siteBasisH2[1]
+#define sminus siteBasisH2[2]
+#define rhoBasissplus rhoBasisH2[0]
+#define rhoBasissz rhoBasisH2[1]
+#define off0RhoBasissplus off0RhoBasisH2[0]
+#define off0RhoBasissz off0RhoBasisH2[1]
+#define off1RhoBasissplus off1RhoBasisH2[0]
+#define off1RhoBasissz off1RhoBasisH2[1]
 
 #define lS blockParts.l
 #define mS blockParts.m
@@ -24,16 +24,16 @@ using namespace Eigen;
 Hamiltonian::Hamiltonian()
 {
     siteBasisH2.resize(nCouplingOperators);
-    sigmaplus << 0., 1.,
-                 0., 0.;                           // define one-site operators
-    sigmaminus << 0., 0.,
-                  1., 0.;
-    sigmaz << 1.,  0.,
-              0., -1.;
-    sigmax << 0., 1.,
+    splus << 0., 1.,
+             0., 0.;                               // define one-site operators
+    sminus << 0., 0.,
               1., 0.;
-    sigmay <<                          0., std::complex<double>(0., -1.),
-              std::complex<double>(0., 1),                            0.;
+    sz << .5,  0.,
+          0., -.5;
+    sx << 0., .5,
+          .5, 0.;
+    sy <<                           0., std::complex<double>(0., -.5),
+          std::complex<double>(0., .5),                            0.;
 };
 
 void Hamiltonian::setParams(const std::vector<double>& couplingConstantsIn,
@@ -58,16 +58,16 @@ rmMatrixX_t
     Hamiltonian::EDBASCoupling(int j, const std::vector<MatrixX_t>& rhoBasisH2)
     const
 {
-    MatrixX_t plusMinus = kp(rhoBasisSigmaplus, sigmaminus);
-    return couplingConstants[j - 1] * (  kp(rhoBasisSigmaz, sigmaz)
-                                       + 2 * (plusMinus + plusMinus.adjoint()));
+    MatrixX_t plusMinus = kp(rhoBasissplus, sminus);
+    return couplingConstants[j - 1] * (  kp(rhoBasissz, sz)
+                                       + (plusMinus + plusMinus.adjoint()) / 2);
 };
 
 MatrixD_t Hamiltonian::h1(int sitesFromWestEnd) const
 {
-    return -(   hFromIntSpins(sitesFromWestEnd, 0)      * sigmax
-             +  hFromIntSpins(sitesFromWestEnd, 1)      * sigmay
-             + (hFromIntSpins(sitesFromWestEnd, 2) + h) * sigmaz);
+    return -(   hFromIntSpins(sitesFromWestEnd, 0)      * sx
+             +  hFromIntSpins(sitesFromWestEnd, 1)      * sy
+             + (hFromIntSpins(sitesFromWestEnd, 2) + h) * sz);
 };
 
 Matrix<hamScalar, Dynamic, 1>
@@ -95,13 +95,11 @@ Matrix<hamScalar, Dynamic, 1>
     // act with system-block-right-hand-free-site bond:
     x.resize(mS, d * mEd);
     rmMatrixX_t y1234
-        = j2 * (  sysBlockRSiteCoupling(blockParts.off0RhoBasisSigmaz, sigmaz,
-                                        x, mS, mE)
-                + 2 * (  sysBlockRSiteCoupling(blockParts.off0RhoBasisSigmaplus,
-                                               sigmaminus, x, mS, mE)
-                       + sysBlockRSiteCoupling(blockParts.off0RhoBasisSigmaplus
-                                               .adjoint(),
-                                               sigmaplus, x, mS, mE)));
+        = j2 * (  sysBlockRSiteCoupling(blockParts.off0RhoBasissz, sz, x, mS, mE)
+                + (  sysBlockRSiteCoupling(blockParts.off0RhoBasissplus, sminus,
+                                           x, mS, mE)
+                   + sysBlockRSiteCoupling(blockParts.off0RhoBasissplus
+                                           .adjoint(), splus, x, mS, mE)) / 2);
     y1234.resize(totalDimension, 1);
     
     // act with left-hand side of system:
@@ -109,20 +107,20 @@ Matrix<hamScalar, Dynamic, 1>
                 cycledx = x.transpose();
     y2341.resize(d, mEd * mS);
     y2341.noalias()
-        +=  j1 * (  sysBlockLSiteCoupling(blockParts.off0RhoBasisSigmaz, sigmaz,
+        +=  j1 * (  sysBlockLSiteCoupling(blockParts.off0RhoBasissz, sz,
                                           cycledx, mS, mE)
-                  + 2 * (  sysBlockLSiteCoupling(blockParts.off0RhoBasisSigmaplus,
-                                                 sigmaminus, cycledx, mS, mE)
-                         + sysBlockLSiteCoupling(blockParts.off0RhoBasisSigmaplus
-                                                 .adjoint(),
-                                                 sigmaplus, cycledx, mS, mE)))
-          + j2 * (  sysBlockLSiteCoupling(blockParts.off1RhoBasisSigmaz, sigmaz,
+                  + (  sysBlockLSiteCoupling(blockParts.off0RhoBasissplus,
+                                             sminus, cycledx, mS, mE)
+                     + sysBlockLSiteCoupling(blockParts.off0RhoBasissplus
+                                             .adjoint(), splus, cycledx, mS, mE))
+                    / 2)
+          + j2 * (  sysBlockLSiteCoupling(blockParts.off1RhoBasissz, sz,
                                           cycledx, mS, mE)
-                  + 2 * (  sysBlockLSiteCoupling(blockParts.off1RhoBasisSigmaplus,
-                                                 sigmaminus, cycledx, mS, mE)
-                         + sysBlockLSiteCoupling(blockParts.off1RhoBasisSigmaplus
-                                                 .adjoint(),
-                                                 sigmaplus, cycledx, mS, mE)));
+                  + (  sysBlockLSiteCoupling(blockParts.off1RhoBasissplus,
+                                             sminus, cycledx, mS, mE)
+                     + sysBlockLSiteCoupling(blockParts.off1RhoBasissplus
+                                             .adjoint(),
+                                             splus, cycledx, mS, mE)) / 2);
                              // act with system-block-left-hand-free-site bonds
     cycledx.resize(d, mEd * mS);
     y2341.noalias() += h1(lFreeSiteDistFromWestEnd) * cycledx;
@@ -138,9 +136,9 @@ Matrix<hamScalar, Dynamic, 1>
         rmMatrixX_t RHS = x.row(i);
         RHS.resize(d, mEd);
         yFSBond.row(i)
-            = j1 * (  freeSiteCouplingTerm(sigmaz, sigmaz, RHS, mE)
-                    + 2 * (  freeSiteCouplingTerm(sigmaplus, sigmaminus, RHS, mE)
-                           + freeSiteCouplingTerm(sigmaminus, sigmaplus, RHS, mE)));
+            = j1 * (  freeSiteCouplingTerm(sz, sz, RHS, mE)
+                    + (  freeSiteCouplingTerm(splus, sminus, RHS, mE)
+                       + freeSiteCouplingTerm(sminus, splus, RHS, mE)) / 2);
     };
     yFSBond.resize(totalDimension, 1);
     
@@ -149,14 +147,13 @@ Matrix<hamScalar, Dynamic, 1>
     cycledx = x.transpose();
     cycledx.resize(mE, d * mSd);
     rmMatrixX_t y3412
-        = j2 * (  envBlockLSiteCoupling(compBlockParts.off0RhoBasisSigmaz, sigmaz,
+        = j2 * (  envBlockLSiteCoupling(compBlockParts.off0RhoBasissz, sz,
                                         cycledx, mS, mE)
-                + 2 * (  envBlockLSiteCoupling(compBlockParts
-                                               .off0RhoBasisSigmaplus,
-                                               sigmaminus, cycledx, mS, mE)
-                       + envBlockLSiteCoupling(compBlockParts
-                                               .off0RhoBasisSigmaplus.adjoint(),
-                                               sigmaplus, cycledx, mS, mE)));
+                + (  envBlockLSiteCoupling(compBlockParts.off0RhoBasissplus,
+                                           sminus, cycledx, mS, mE)
+                   + envBlockLSiteCoupling(compBlockParts.off0RhoBasissplus
+                                           .adjoint(),
+                                           splus, cycledx, mS, mE)) / 2);
     y3412.resize(mEd, mSd);
     y3412.transposeInPlace();
     y3412.resize(totalDimension, 1);
@@ -168,22 +165,20 @@ Matrix<hamScalar, Dynamic, 1>
                                                // act with right-hand free site
     y4123.resize(d * mSd, mE);
     y4123.noalias()
-        +=  j1 * (  envBlockRSiteCoupling(compBlockParts.off0RhoBasisSigmaz,
-                                          sigmaz, cycledx, mS, mE)
-                  + 2 * (  envBlockRSiteCoupling(compBlockParts
-                                                 .off0RhoBasisSigmaplus,
-                                                 sigmaminus, cycledx, mS, mE)
-                         + envBlockRSiteCoupling(compBlockParts
-                                                 .off0RhoBasisSigmaplus.adjoint(),
-                                                 sigmaplus, cycledx, mS, mE)))
-          + j2 * (  envBlockRSiteCoupling(compBlockParts.off1RhoBasisSigmaz,
-                                          sigmaz, cycledx, mS, mE)
-                  + 2 * (  envBlockRSiteCoupling(compBlockParts
-                                                 .off1RhoBasisSigmaplus,
-                                                 sigmaminus, cycledx, mS, mE)
-                         + envBlockRSiteCoupling(compBlockParts
-                                                 .off1RhoBasisSigmaplus.adjoint(),
-                                                 sigmaplus, cycledx, mS, mE)));
+        +=  j1 * (  envBlockRSiteCoupling(compBlockParts.off0RhoBasissz, sz,
+                                          cycledx, mS, mE)
+                  + (  envBlockRSiteCoupling(compBlockParts.off0RhoBasissplus,
+                                             sminus, cycledx, mS, mE)
+                     + envBlockRSiteCoupling(compBlockParts.off0RhoBasissplus
+                                             .adjoint(),
+                                             splus, cycledx, mS, mE)) / 2)
+          + j2 * (  envBlockRSiteCoupling(compBlockParts.off1RhoBasissz, sz,
+                                          cycledx, mS, mE)
+                  + (  envBlockRSiteCoupling(compBlockParts.off1RhoBasissplus,
+                                             sminus, cycledx, mS, mE)
+                     + envBlockRSiteCoupling(compBlockParts.off1RhoBasissplus
+                                             .adjoint(),
+                                             splus, cycledx, mS, mE)) / 2);
                        // act with environment-block-right-hand-free-site bonds
     cycledx.resize(d * mSd, mE);
     y4123.noalias() += cycledx * compBlockParts.hS.transpose();
@@ -256,29 +251,21 @@ rmMatrixX_t Hamiltonian::envBlockRSiteCoupling(const MatrixX_t& hEBond,
 rmMatrixX_t Hamiltonian::projectedBASCouplings(TheBlock * block) const
 {
     return  j1 * (  block
-                    -> projectBASCoupling(block -> blockParts.off0RhoBasisSigmaz,
-                                          sigmaz)
-                  + 2 * (  block
-                           -> projectBASCoupling(block
-                                                 -> blockParts
-                                                 .off0RhoBasisSigmaplus,
-                                                 sigmaminus)
-                         + block
-                           -> projectBASCoupling(block
-                                                 -> blockParts
-                                                 .off0RhoBasisSigmaplus.adjoint(),
-                                                 sigmaplus)))
+                    -> projectBASCoupling(block -> blockParts.off0RhoBasissz, sz)
+                  + (  block
+                       -> projectBASCoupling(block -> blockParts.off0RhoBasissplus,
+                                             sminus)
+                     + block
+                       -> projectBASCoupling(block -> blockParts
+                                             .off0RhoBasissplus.adjoint(),
+                                             splus)) / 2)
           + j2 * (  block
-                    -> projectBASCoupling(block -> blockParts.off1RhoBasisSigmaz,
-                                          sigmaz)
-                  + 2 * (  block
-                           -> projectBASCoupling(block
-                                                 -> blockParts
-                                                 .off1RhoBasisSigmaplus,
-                                                 sigmaminus)
-                         + block
-                           -> projectBASCoupling(block
-                                                 -> blockParts
-                                                 .off1RhoBasisSigmaplus.adjoint(),
-                                                 sigmaplus)));
+                    -> projectBASCoupling(block -> blockParts.off1RhoBasissz, sz)
+                  + (  block
+                       -> projectBASCoupling(block -> blockParts.off1RhoBasissplus,
+                                             sminus)
+                     + block
+                       -> projectBASCoupling(block -> blockParts.off1RhoBasissplus
+                                                      .adjoint(),
+                                             splus)) / 2);
 };
