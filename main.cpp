@@ -37,11 +37,11 @@ int main()
         std::vector<double> couplingConstants(nCouplingConstants);
         for(int i = 0; i < nCouplingConstants; i++)
             filein >> couplingConstants[i];
-        double theta,               // polar angle of interstitial spins ansatz
-               dphi; // wave number of azimuthal rotation of interstitial spins
+        double dphi, // wave number of azimuthal rotation of interstitial spins
+               theta;               // polar angle of interstitial spins ansatz
         int rangeOfObservables, // number of sites at which to measure observables
             nSweeps;                        // number of sweeps to be performed
-        filein >> theta >> dphi >> rangeOfObservables >> data.mMax >> nSweeps;
+        filein >> dphi >> theta >> rangeOfObservables >> data.mMax >> nSweeps;
         if(rangeOfObservables == -1)
             rangeOfObservables = lSys;
         std::vector<double> lancTolerances(nSweeps + 1);
@@ -51,7 +51,7 @@ int main()
         fileout << "System length: " << lSys << "\nCoupling constants:";
         for(double couplingConstant : couplingConstants)
             fileout << " " << couplingConstant;
-        fileout << "\nTheta: " << theta << "\ndphi: " << dphi
+        fileout << "\ndphi: " << dphi << "\nTheta: " << theta
                 << "\nMaximum bond dimension: " << data.mMax
                 << "\nNumber of sweeps: " << nSweeps << "\nLanczos tolerances:";
         for(double lancTolerance : lancTolerances)
@@ -199,7 +199,7 @@ int main()
                                                                 skips);
                                                // calculate ground-state energy
                 chainEnergy = hSuperFinal.gsEnergy;
-                fileout << "Ground state energy density = "
+                fileout << "Ground state energy density: "
                         << chainEnergy / lSys << std::endl << std::endl;
                 std::cout << "Calculating observables..." << std::endl;
                 #include "ObservableOps.h"
