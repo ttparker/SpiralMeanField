@@ -41,8 +41,8 @@ MatrixXd twoSiteExpValues(const obsMatrixD_t& firstTwoSiteOp,
                           const obsMatrixD_t& secondTwoSiteOp,
                           int rangeOfObservables,
                           int lSys, FinalSuperblock& hSuperFinal,
-                          std::vector<TheBlock>& leftBlocks,
-                          std::vector<TheBlock>& rightBlocks,
+                          std::vector<TheBlock>& westBlocks,
+                          std::vector<TheBlock>& eastBlocks,
                           std::ofstream& fileout)
 {
     opsVec ops;                     // list of observable single-site operators
@@ -57,8 +57,8 @@ MatrixXd twoSiteExpValues(const obsMatrixD_t& firstTwoSiteOp,
         {
             ops[0].second = start + i;
             ops[1].second = start + j;
-            double exactValue = hSuperFinal.expValue(ops, leftBlocks,
-                                                     rightBlocks);
+            double exactValue = hSuperFinal.expValue(ops, westBlocks,
+                                                     eastBlocks);
             correlationFunction(i, j) = std::abs(exactValue)
                                             < observableThreshold ?
                                         0. : exactValue;

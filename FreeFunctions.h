@@ -17,8 +17,8 @@ Eigen::MatrixXd twoSiteExpValues(const obsMatrixD_t& firstTwoSiteOp,
                                  const obsMatrixD_t& secondTwoSiteOp,
                                  int rangeOfObservables, int lSys,
                                  FinalSuperblock& hSuperFinal,
-                                 std::vector<TheBlock>& leftBlocks,
-                                 std::vector<TheBlock>& rightBlocks,
+                                 std::vector<TheBlock>& westBlocks,
+                                 std::vector<TheBlock>& eastBlocks,
                                  std::ofstream& fileout);
 
 #endif
