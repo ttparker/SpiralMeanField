@@ -135,9 +135,9 @@ int main()
                 = westBlocks[lSFinal - 2].nextBlock(data, psiGround,
                                                     cumulativeTruncationError);
         };
-        std::cout << "iDMRG average truncation error: "
-                  << cumulativeTruncationError / (lSys - 2)
-                  << std::endl;       // handles both even and odd system sizes
+        fileout << "iDMRG average truncation error: "
+                << cumulativeTruncationError / (lSys - 2) << std::endl
+                << std::endl;         // handles both even and odd system sizes
         if(completeED || nSweeps == 0)
             psiGround = randomSeed(westBlocks[lSFinal - 1],
                                    eastBlocks[lEFinal - 1]);
@@ -185,10 +185,10 @@ int main()
                     westBlocks[site + 1]
                         = westBlocks[site].nextBlock(data, psiGround,
                                                      cumulativeTruncationError);
-                std::cout << "Sweep " << sweep
-                          << " complete. Average truncation error: "
-                          << cumulativeTruncationError / (2 * lSys - 4)
-                          << std::endl;
+                std::cout << "Sweep " << sweep << " complete." << std::endl;
+                fileout << "Average truncation error: "
+                        << cumulativeTruncationError / (2 * lSys - 4)
+                        << std::endl;
                 data.infiniteStage = false;
                 FinalSuperblock hSuperFinal
                     = westBlocks[lSFinal - 1].createHSuperFinal(data, psiGround,
@@ -250,7 +250,7 @@ int main()
                 data.ham.calcEffectiveH(intSpins);
             };
             fileout << "Final interstitial spin polarizations:" << std::endl
-                    << intSpins << std::endl << std::endl
+                    << intSpins << std::endl << std::endl << std::endl
                     << "Chain ground state energy density: "
                     << chainEnergy / lSys << std::endl
                     << std::endl;
