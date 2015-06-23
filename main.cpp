@@ -227,14 +227,14 @@ int main()
                               -jprime * (oneSiteys(i) + oneSiteys(i + 1)),
                               -jprime * (oneSitezs(i) + oneSitezs(i + 1)) + h / 2;
                            // induced + applied fields on ith interstitial spin
-                    intSpins.row(i) = hTotal.normalized() / 2;
+                    intSpins.row(i) = hTotal.normalized() * (d - 1) / 2;
                 };
                 RowVector3d hTotal;
                                 // induced field on rightmost interstitial spin
                 hTotal <<  -jprime * oneSitexs(lSys - 1),
                            -jprime * oneSiteys(lSys - 1),
                            -jprime * oneSitezs(lSys - 1) + h / 2;
-                intSpins.row(lSys - 1) = hTotal.normalized() / 2;
+                intSpins.row(lSys - 1) = hTotal.normalized() * (d - 1) / 2;
                 data.ham.calcEffectiveH(intSpins);
             };
             double intEnergy = -h / 2 * intSpins.col(2).sum();
