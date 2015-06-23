@@ -18,52 +18,47 @@ void reflectPredictedPsi(rmMatrixX_t& psiGround, const TheBlock& bigBlock,
     psiGround.resize(bigBlock.blockParts.m * d * littleBlock.blockParts.m * d, 1);
 };
 
-VectorXd oneSiteExpValues(const obsMatrixD_t& oneSiteOp, int rangeOfObservables,
-                          int lSys, FinalSuperblock& hSuperFinal,
-                          std::vector<TheBlock>& leftBlocks,
-                          std::vector<TheBlock>& rightBlocks)
+VectorXd oneSiteExpValues(const obsMatrixD_t& oneSiteOp, int lSys,
+                          FinalSuperblock& hSuperFinal,
+                          std::vector<TheBlock>& westBlocks,
+                          std::vector<TheBlock>& eastBlocks)
 {
     opsVec ops;                     // list of observable single-site operators
     ops.push_back(std::make_pair(oneSiteOp, 0));
-    VectorXd oneSiteVals(rangeOfObservables);
-    int start = (lSys - rangeOfObservables) / 2;
-    for(int i = 0; i < rangeOfObservables; i++)
+    VectorXd oneSiteVals(lSys);
+    for(int i = 0; i < lSys; i++)
     {
-        ops[0].second = start + i;
-        double exactValue = hSuperFinal.expValue(ops, leftBlocks, rightBlocks);
+        ops[0].second = i;
+        double exactValue = hSuperFinal.expValue(ops, westBlocks, eastBlocks);
         oneSiteVals(i) = std::abs(exactValue) < observableThreshold ?
                          0. : exactValue;
     };
     return oneSiteVals;
 };
 
-MatrixXd twoSiteExpValues(const obsMatrixD_t& firstTwoSiteOp,
-                          const obsMatrixD_t& secondTwoSiteOp,
-                          int rangeOfObservables,
-                          int lSys, FinalSuperblock& hSuperFinal,
-                          std::vector<TheBlock>& westBlocks,
-                          std::vector<TheBlock>& eastBlocks,
-                          std::ofstream& fileout)
+double expiDotj(int i, int j, FinalSuperblock& hSuperFinal,
+                std::vector<TheBlock>& leftBlocks,
+                std::vector<TheBlock>& rightBlocks)
 {
+    obsMatrixD_t splus,
+                 sminus,
+                 sz;
+    splus << 0, 1,
+             0, 0;
+    sminus << 0, 0,
+              1, 0;
+    sz << .5,   0,
+           0, -.5;
     opsVec ops;                     // list of observable single-site operators
     ops.reserve(2);
-    ops.push_back(std::make_pair(firstTwoSiteOp, 0));
-    ops.push_back(std::make_pair(secondTwoSiteOp, 0));
-    MatrixXd correlationFunction = MatrixXd::Zero(rangeOfObservables,
-                                                  rangeOfObservables);
-    int start = (lSys - rangeOfObservables) / 2;
-    for(int i = 0; i < rangeOfObservables; i++)
-        for(int j = 0; j < rangeOfObservables; j++)
-        {
-            ops[0].second = start + i;
-            ops[1].second = start + j;
-            double exactValue = hSuperFinal.expValue(ops, westBlocks,
-                                                     eastBlocks);
-            correlationFunction(i, j) = std::abs(exactValue)
-                                            < observableThreshold ?
-                                        0. : exactValue;
-        };
-    fileout << "Two-site correlation function:\n" << correlationFunction
-            << std::endl << std::endl;
-    return correlationFunction;
+    ops.push_back(std::make_pair(splus, i));
+    ops.push_back(std::make_pair(sminus, j));
+    double dotExpValue = hSuperFinal.expValue(ops, leftBlocks, rightBlocks) / 2;
+    ops[0].first = sminus;
+    ops[1].first = splus;
+    dotExpValue += hSuperFinal.expValue(ops, leftBlocks, rightBlocks) / 2;
+    ops[0].first = sz;
+    ops[1].first = sz;
+    dotExpValue += hSuperFinal.expValue(ops, leftBlocks, rightBlocks);
+    return dotExpValue;
 };

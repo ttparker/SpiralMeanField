@@ -39,11 +39,8 @@ int main()
             filein >> couplingConstants[i];
         double dphi, // wave number of azimuthal rotation of interstitial spins
                theta;               // polar angle of interstitial spins ansatz
-        int rangeOfObservables, // number of sites at which to measure observables
-            nSweeps;                        // number of sweeps to be performed
-        filein >> dphi >> theta >> rangeOfObservables >> data.mMax >> nSweeps;
-        if(rangeOfObservables == -1)
-            rangeOfObservables = lSys;
+        int nSweeps;                        // number of sweeps to be performed
+        filein >> dphi >> theta >> data.mMax >> nSweeps;
         std::vector<double> lancTolerances(nSweeps + 1);
         for(int sweep = 0; sweep <= nSweeps; sweep++)
             filein >> lancTolerances[sweep];
@@ -120,9 +117,8 @@ int main()
                                              cumulativeTruncationError,
                                              eastBlocksStart + site + 1);
         data.exactDiag = completeED;
-        for(int site = skips, end = lEFinal - 1; site < end; site++,
-                                                             data.compBlock++)
-                                                                       // iDMRG
+        for(int site = skips, end = lEFinal - 1; site < end;
+            site++, data.compBlock++)                                  // iDMRG
         {
             psiGround = randomSeed(westBlocks[site], eastBlocks[site]);
             westBlocks[site + 1]
@@ -199,63 +195,76 @@ int main()
                                                                 skips);
                                                // calculate ground-state energy
                 chainEnergy = hSuperFinal.gsEnergy;
-                fileout << "Ground state energy density: "
+                fileout << "Chain ground state energy density: "
                         << chainEnergy / lSys << std::endl << std::endl;
                 std::cout << "Calculating observables..." << std::endl;
                 #include "ObservableOps.h"
                 VectorXd
-                    oneSitexs = oneSiteExpValues(obsList[0], rangeOfObservables,
-                                                 lSys, hSuperFinal, westBlocks,
-                                                 eastBlocks),
-                    oneSiteys = oneSiteExpValues(obsList[1], rangeOfObservables,
-                                                 lSys, hSuperFinal, westBlocks,
-                                                 eastBlocks),
-                    oneSitezs = oneSiteExpValues(obsList[2], rangeOfObservables,
-                                                 lSys, hSuperFinal, westBlocks,
-                                                 eastBlocks);
-                std::cout << std::endl;
+                    oneSitexs = oneSiteExpValues(obsList[0], lSys, hSuperFinal,
+                                                 westBlocks, eastBlocks),
+                    oneSiteys = oneSiteExpValues(obsList[1], lSys, hSuperFinal,
+                                                 westBlocks, eastBlocks),
+                    oneSitezs = oneSiteExpValues(obsList[2], lSys, hSuperFinal,
+                                                 westBlocks, eastBlocks);
+                std::vector<double> nnCorrelations,
+                                    nnnCorrelations;
+                nnCorrelations.reserve(lSys - 1);
+                nnnCorrelations.reserve(lSys - 2);
+                for(int i = 0, end = lSys - 2; i < end; i++)
+                {
+                    nnCorrelations.push_back(expiDotj(i, i + 1, hSuperFinal,
+                                                      westBlocks, eastBlocks));
+                    nnnCorrelations.push_back(expiDotj(i, i + 2, hSuperFinal,
+                                                       westBlocks, eastBlocks));
+                };
+                nnCorrelations.push_back(expiDotj(lSys - 2, lSys - 1, hSuperFinal,
+                                                  westBlocks, eastBlocks));
                 MatrixXd oneSiteVals(lSys, 3);
                 oneSiteVals.col(0) = oneSitexs;
                 oneSiteVals.col(1) = oneSiteys;
                 oneSiteVals.col(2) = oneSitezs;
                 fileout << "Expectation values at each chain site:" << std::endl
-                        << oneSiteVals << std::endl << std::endl;
+                        << oneSiteVals << std::endl << std::endl
+                        << "Expectation values of S_i dot S_{i + 1}:" << std::endl;
+                for(double d : nnCorrelations)
+                    fileout << d << std::endl;
+                fileout << std::endl
+                        << "Expectation values of S_i dot S_{i + 2}:\n";
+                for(double d : nnnCorrelations)
+                    fileout << d << std::endl;
+                fileout << std::endl;
+                RowVector3d hTotal;
+                              // induced + applied fields on interstitial spins
                 for(int i = 0; i < lSys - 1; i++)
                 {
-                    RowVector3d hTotal;
                     hTotal << -jprime * (oneSitexs(i) + oneSitexs(i + 1)),
                               -jprime * (oneSiteys(i) + oneSiteys(i + 1)),
                               -jprime * (oneSitezs(i) + oneSitezs(i + 1)) + h / 2;
-                           // induced + applied fields on ith interstitial spin
                     intSpins.row(i) = hTotal.normalized() * (d - 1) / 2;
                 };
-                RowVector3d hTotal;
-                                // induced field on rightmost interstitial spin
                 hTotal <<  -jprime * oneSitexs(lSys - 1),
                            -jprime * oneSiteys(lSys - 1),
                            -jprime * oneSitezs(lSys - 1) + h / 2;
                 intSpins.row(lSys - 1) = hTotal.normalized() * (d - 1) / 2;
+                      // induced + applied field on rightmost interstitial spin
                 data.ham.calcEffectiveH(intSpins);
             };
-            double intEnergy = -h / 2 * intSpins.col(2).sum();
             fileout << "Final interstitial spin polarizations:" << std::endl
                     << intSpins << std::endl << std::endl
-                    << "Contribution to GS energy density from field on "
-                    << "interstitial spins: " << intEnergy / lSys << std::endl 
-                    << "Total GS energy density: "
-                    << (chainEnergy + intEnergy) / lSys << std::endl
+                    << "Chain ground state energy density: "
+                    << chainEnergy / lSys << std::endl
                     << std::endl;
         };
         clock_t stopTrial = clock();
         fileout << "Elapsed time: "
-                << float(stopTrial - startTrial)/CLOCKS_PER_SEC << " s"
+                << float(stopTrial - startTrial) / CLOCKS_PER_SEC << " s"
                 << std::endl;
         fileout.close();
     };
     filein.close();
     
     clock_t stop = clock();
-    std::cout << "Done. Elapsed time: " << float(stop - start)/CLOCKS_PER_SEC
+    std::cout << "Done. Elapsed time: " << float(stop - start) / CLOCKS_PER_SEC
               << " s" << std::endl;
     
     return 0;
